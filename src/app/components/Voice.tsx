@@ -15,8 +15,15 @@ export default function VoiceAssistant() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    if (!isActive) {
+      socket.disconnect();
+      return;
+    }
+
+    socket.connect();
+
     const canvas = canvasRef.current
-    if (!canvas || !isActive) return
+    if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -72,17 +79,20 @@ export default function VoiceAssistant() {
       socket.off('listening_status')
       socket.off('transcription')
       socket.off('connect_error')
+      socket.disconnect()
     }
   }, [isActive])
 
   const startConversation = () => {
     setIsActive(true)
+    socket.connect()
     socket.emit('start_conversation')
   }
 
   const stopConversation = () => {
     setIsActive(false)
     socket.emit('stop_conversation')
+    socket.disconnect()
   }
 
   const toggleListening = () => {
