@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
-import { Mic, MicOff, Stethoscope, Pill, Clipboard, Activity, Bot } from 'lucide-react'
+import { Mic, Stethoscope, Pill, Clipboard, Activity, Bot } from 'lucide-react'
 import io from 'socket.io-client'
 import styles from './Voice.module.css'
+import BackgroundAnimation from './BackgroundAnimation'
+import EndScreen from './EndScreen'
 
 // Replace with the IP address and port of your AI assistant backend
 const BACKEND_URL = 'http://localhost:5001'  // Changed to connect to your backend on port 5001
@@ -13,57 +15,12 @@ const socket = io(BACKEND_URL)
 
 export default function VoiceAssistant() {
   const [isActive, setIsActive] = useState(false)
+  const [isEnded, setIsEnded] = useState(false)
   const [response, setResponse] = useState("")
   const [error, setError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    // Background animation
-    const bgCanvas = backgroundCanvasRef.current
-    if (!bgCanvas) return
-
-    const bgCtx = bgCanvas.getContext('2d')
-    if (!bgCtx) return
-
-    bgCanvas.width = window.innerWidth
-    bgCanvas.height = window.innerHeight
-
-    const particles: { x: number; y: number; radius: number; dx: number; dy: number }[] = []
-    for (let i = 0; i < 50; i++) {
-      particles.push({
-        x: Math.random() * bgCanvas.width,
-        y: Math.random() * bgCanvas.height,
-        radius: Math.random() * 2 + 1,
-        dx: (Math.random() - 0.5) * 0.5,
-        dy: (Math.random() - 0.5) * 0.5
-      })
-    }
-
-    function animateBackground() {
-      if (!bgCtx || !bgCanvas) return
-
-      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height)
-      
-      particles.forEach(particle => {
-        bgCtx.beginPath()
-        bgCtx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2)
-        bgCtx.fillStyle = 'rgba(59, 130, 246, 0.5)'
-        bgCtx.fill()
-
-        particle.x += particle.dx
-        particle.y += particle.dy
-
-        if (particle.x < 0 || particle.x > bgCanvas.width) particle.dx = -particle.dx
-        if (particle.y < 0 || particle.y > bgCanvas.height) particle.dy = -particle.dy
-      })
-
-      requestAnimationFrame(animateBackground)
-    }
-
-    animateBackground()
-
-    // Voice visualization
     if (!isActive) {
       socket.disconnect();
       return;
@@ -107,6 +64,11 @@ export default function VoiceAssistant() {
 
     socket.on('ai_response', (data) => {
       setResponse(data.text)
+      if (data.text.toLowerCase().includes("have a nice day")) {
+        setIsActive(false)
+        setIsEnded(true)
+        socket.disconnect()
+      }
     })
 
     socket.on('transcription', (data) => {
@@ -127,22 +89,21 @@ export default function VoiceAssistant() {
     }
   }, [isActive])
 
-  const toggleConversation = () => {
-    if (isActive) {
-      setIsActive(false)
-      socket.emit('stop_conversation')
-      socket.disconnect()
-    } else {
-      setIsActive(true)
-      socket.connect()
-      socket.emit('start_conversation')
-    }
+  const startConversation = () => {
+    setIsActive(true)
+    setIsEnded(false)
+    socket.connect()
+    socket.emit('start_conversation')
     setError(null)
+  }
+
+  if (isEnded) {
+    return <EndScreen />
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
-      <canvas ref={backgroundCanvasRef} className="absolute inset-0" />
+      <BackgroundAnimation />
       <Card className="w-full max-w-md relative z-10">
         <div className="absolute top-2 left-2">
           <Bot className="w-6 h-6 text-blue-500" />
@@ -197,15 +158,15 @@ export default function VoiceAssistant() {
           )}
         </CardContent>
         <CardFooter className="flex justify-center pt-2 pb-6">
-          <Button
-            onClick={toggleConversation}
-            className={`${
-              isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
-            } text-white font-semibold py-5 px-10 rounded-full flex items-center space-x-4 transition-colors duration-300 text-xl ${styles.throb}`}
-          >
-            {isActive ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
-            <span>{isActive ? 'Stop' : 'Start'} Assistant</span>
-          </Button>
+          {!isActive && (
+            <Button
+              onClick={startConversation}
+              className={`bg-blue-500 hover:bg-blue-600 text-white font-semibold py-5 px-10 rounded-full flex items-center space-x-4 transition-colors duration-300 text-xl ${styles.throb}`}
+            >
+              <Mic className="w-7 h-7" />
+              <span>Start Assistant</span>
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
