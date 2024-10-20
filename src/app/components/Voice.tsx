@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { Mic, MicOff, Stethoscope, Pill, Clipboard, Activity, Bot } from 'lucide-react'
 import io from 'socket.io-client'
+import styles from './Voice.module.css'
 
 // Replace with the IP address and port of your AI assistant backend
 const BACKEND_URL = 'http://localhost:5001'  // Changed to connect to your backend on port 5001
@@ -10,11 +13,57 @@ const socket = io(BACKEND_URL)
 
 export default function VoiceAssistant() {
   const [isActive, setIsActive] = useState(false)
-  const [isListening, setIsListening] = useState(false)
   const [response, setResponse] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    // Background animation
+    const bgCanvas = backgroundCanvasRef.current
+    if (!bgCanvas) return
+
+    const bgCtx = bgCanvas.getContext('2d')
+    if (!bgCtx) return
+
+    bgCanvas.width = window.innerWidth
+    bgCanvas.height = window.innerHeight
+
+    const particles: { x: number; y: number; radius: number; dx: number; dy: number }[] = []
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: Math.random() * bgCanvas.width,
+        y: Math.random() * bgCanvas.height,
+        radius: Math.random() * 2 + 1,
+        dx: (Math.random() - 0.5) * 0.5,
+        dy: (Math.random() - 0.5) * 0.5
+      })
+    }
+
+    function animateBackground() {
+      if (!bgCtx || !bgCanvas) return
+
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height)
+      
+      particles.forEach(particle => {
+        bgCtx.beginPath()
+        bgCtx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2)
+        bgCtx.fillStyle = 'rgba(59, 130, 246, 0.5)'
+        bgCtx.fill()
+
+        particle.x += particle.dx
+        particle.y += particle.dy
+
+        if (particle.x < 0 || particle.x > bgCanvas.width) particle.dx = -particle.dx
+        if (particle.y < 0 || particle.y > bgCanvas.height) particle.dy = -particle.dy
+      })
+
+      requestAnimationFrame(animateBackground)
+    }
+
+    animateBackground()
+
+    // Voice visualization
     if (!isActive) {
       socket.disconnect();
       return;
@@ -41,8 +90,8 @@ export default function VoiceAssistant() {
         ctx.lineTo(i, y)
       }
 
-      ctx.strokeStyle = 'rgb(167, 139, 250)' // Tailwind's purple-400
-      ctx.lineWidth = 3
+      ctx.strokeStyle = '#3B82F6'
+      ctx.lineWidth = 2
       ctx.stroke()
 
       offset += 1
@@ -51,17 +100,13 @@ export default function VoiceAssistant() {
 
     draw()
 
-    // Socket event listeners
     socket.on('connect', () => {
       console.log('Connected to AI assistant backend')
+      setError(null)
     })
 
     socket.on('ai_response', (data) => {
       setResponse(data.text)
-    })
-
-    socket.on('listening_status', (status) => {
-      setIsListening(status.isListening)
     })
 
     socket.on('transcription', (data) => {
@@ -70,76 +115,99 @@ export default function VoiceAssistant() {
 
     socket.on('connect_error', (error) => {
       console.error('Connection error:', error)
-      setResponse("Error connecting to AI assistant. Please check the backend.")
+      setError("Error connecting to AI assistant. Please check the backend.")
     })
 
     return () => {
       cancelAnimationFrame(animationFrameId)
       socket.off('ai_response')
-      socket.off('listening_status')
       socket.off('transcription')
       socket.off('connect_error')
       socket.disconnect()
     }
   }, [isActive])
 
-  const startConversation = () => {
-    setIsActive(true)
-    socket.connect()
-    socket.emit('start_conversation')
-  }
-
-  const stopConversation = () => {
-    setIsActive(false)
-    socket.emit('stop_conversation')
-    socket.disconnect()
-  }
-
-  const toggleListening = () => {
-    socket.emit('toggle_listening', { isListening: !isListening })
-  }
-
-  if (!isActive) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-purple-400 to-pink-500">
-        <Button
-          onClick={startConversation}
-          className="text-3xl font-bold py-10 px-16 rounded-full bg-white text-purple-600 hover:bg-purple-100 transition-all duration-300 transform hover:scale-105 shadow-lg"
-        >
-          Start Voice Assistant
-        </Button>
-      </div>
-    )
+  const toggleConversation = () => {
+    if (isActive) {
+      setIsActive(false)
+      socket.emit('stop_conversation')
+      socket.disconnect()
+    } else {
+      setIsActive(true)
+      socket.connect()
+      socket.emit('start_conversation')
+    }
+    setError(null)
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-400 to-pink-500">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-4 text-purple-600">Voice Assistant</h1>
-        <canvas 
-          ref={canvasRef} 
-          width={400} 
-          height={100} 
-          className="w-full mb-6"
-        />
-        <Button
-          onClick={toggleListening}
-          className="w-full py-4 text-lg font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-all duration-300 mb-4"
-        >
-          {isListening ? "Stop Listening" : "Start Listening"}
-        </Button>
-        {response && (
-          <div className="mt-4 p-4 bg-gray-100 rounded">
-            <p className="text-gray-800">{response}</p>
+    <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
+      <canvas ref={backgroundCanvasRef} className="absolute inset-0" />
+      <Card className="w-full max-w-md relative z-10">
+        <div className="absolute top-2 left-2">
+          <Bot className="w-6 h-6 text-blue-500" />
+        </div>
+        <CardHeader className="space-y-2 p-6 pb-2">
+          <CardTitle className="text-2xl font-bold text-center">AI Physician Assistant</CardTitle>
+          <CardDescription className="text-center text-base">
+            Your virtual medical consultation companion
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 px-6 pt-2 pb-4">
+          <div className="bg-blue-50 p-3 rounded-lg mx-auto max-w-[80%]">
+            <h3 className="text-xs font-semibold text-blue-700 mb-2">What you will discuss:</h3>
+            <ul className="space-y-1 text-xs">
+              <li className="flex items-center space-x-2">
+                <Stethoscope className="w-3 h-3 text-blue-500" />
+                <span className="text-blue-700">Health concerns</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <Pill className="w-3 h-3 text-blue-500" />
+                <span className="text-blue-700">Medication info</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <Clipboard className="w-3 h-3 text-blue-500" />
+                <span className="text-blue-700">Medical procedures</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <Activity className="w-3 h-3 text-blue-500" />
+                <span className="text-blue-700">Wellness advice</span>
+              </li>
+            </ul>
           </div>
-        )}
-        <Button
-          onClick={stopConversation}
-          className="w-full py-4 text-lg font-semibold bg-red-500 hover:bg-red-600 text-white transition-all duration-300 mt-4"
-        >
-          Stop Voice Assistant
-        </Button>
-      </div>
+          {isActive && (
+            <canvas 
+              ref={canvasRef} 
+              width={250} 
+              height={40} 
+              className="w-full bg-blue-100 rounded-md"
+            />
+          )}
+          {error && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-2 text-xs" role="alert">
+              <p className="font-bold">Error</p>
+              <p>{error}</p>
+            </div>
+          )}
+          {response && (
+            <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-2 text-xs" role="alert">
+              <p className="font-bold">AI Response</p>
+              <p>{response}</p>
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="flex justify-center pt-2 pb-6">
+          <Button
+            onClick={toggleConversation}
+            className={`${
+              isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'
+            } text-white font-semibold py-5 px-10 rounded-full flex items-center space-x-4 transition-colors duration-300 text-xl ${styles.throb}`}
+          >
+            {isActive ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+            <span>{isActive ? 'Stop' : 'Start'} Assistant</span>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
