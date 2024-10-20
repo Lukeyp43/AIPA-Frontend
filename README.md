@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## What is AIPA? 
 
-## Getting Started
+AIPA (Artificial Intelligence Physician Assistant) is a voice-activated interface that allows easy data collection from physician patients. 
 
-First, run the development server:
+* Visually appealing UI.
+* Automatically sends reports to doctor on duty
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Why AIPA?
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+According to the AAPA[1], the US could face a shortage of up to 100k physicians by 2030. To keep up with the demand of patients in America, we created AIPA. AIPA leverages speech-to-text and text-to-speech technology to streamline medical appointments, saving time for both physicians and patients
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Technology
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**React** - handles the dynamic web application
 
-## Learn More
+**Groq** - LLM used to create conversation bot and format output
 
-To learn more about Next.js, take a look at the following resources:
+**Deepgram** - processes speech input and produces speech output from generated text
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**LangChain** - Meshed DeepGram and Groq in the backend
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Sources
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[1]  https://www.aapa.org/news-central/2017/03/aamc-releases-2017-projections-report/
