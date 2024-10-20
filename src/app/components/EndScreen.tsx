@@ -1,12 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+
+const ReactConfetti = dynamic(() => import('react-confetti'), { ssr: false })
 
 export default function EndScreen() {
   const [text, setText] = useState('')
   const [isTypingComplete, setIsTypingComplete] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
+  const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
   const fullText = "The Doctor Will Be Seeing You Shortly!"
 
   useEffect(() => {
+    setWindowDimensions({ width: window.innerWidth, height: window.innerHeight })
+
     let index = 0
     const typingInterval = setInterval(() => {
       if (index <= fullText.length) {
@@ -15,6 +22,7 @@ export default function EndScreen() {
       } else {
         clearInterval(typingInterval)
         setIsTypingComplete(true)
+        setTimeout(() => setShowConfetti(true), 1000) // Start confetti after 1 second
       }
     }, 100) // Adjust typing speed here
 
@@ -23,7 +31,15 @@ export default function EndScreen() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      {showConfetti && (
+        <ReactConfetti
+          width={windowDimensions.width}
+          height={windowDimensions.height}
+          recycle={false}
+          numberOfPieces={200}
+        />
+      )}
+      <Card className="w-full max-w-md relative">
         <CardContent className="flex flex-col items-center justify-center p-6">
           <h1 className={`text-3xl font-bold text-center text-blue-600 mb-4 ${isTypingComplete ? 'typed-text' : ''}`}>
             {text}
